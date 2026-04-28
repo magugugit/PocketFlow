@@ -1,0 +1,88 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+}
+
+android {
+    namespace = "com.pocketflow.app"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.pocketflow.app"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    // Core Android
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+
+    // Compose BOM
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.ui.text.google.fonts)
+
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.8.4")
+
+    // Lifecycle ViewModel Compose
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+
+    // Accompanist (system UI controller for status bar)
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+
+    // Splash Screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // Room (offline database)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // Coil (load photo URIs in Compose)
+    implementation(libs.coil.compose)
+
+    // Testing
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Stores expense photos in app-private storage so we don't need WRITE_EXTERNAL_STORAGE -->
+    <files-path name="expense_photos" path="expense_photos/" />
+    <cache-path name="cache_photos" path="." />
+</paths>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme — Compose handles most theming, this is just the window theme -->
+    <style name="Theme.PocketFlow" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
