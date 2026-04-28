@@ -8,7 +8,7 @@ The interface is inspired by Uber: a monochrome black-and-white palette with a s
 
 ## 📺 Demo Video
 
-🔗 **Watch the demo on YouTube:** https://youtu.be/uEE5Bs3ljx0
+🔗 **Watch the demo on YouTube:** [https://youtu.be/uEE5Bs3ljx0](https://youtu.be/-WYQ0NW-0Ts?si=W8IwNC0yljBp-80N)
 
 The video walks through every required feature with a voice-over.
 
