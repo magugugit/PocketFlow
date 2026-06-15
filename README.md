@@ -6,7 +6,7 @@ A budget-tracker Android app built with **Kotlin** and **Jetpack Compose** for t
 The interface is inspired by Uber: a monochrome black-and-white palette with a single
 green accent, and Inter typography for a clean, modern look.
 
-> **Built by Abonga Magugu (ST10298002)** for the App Development module.
+> **Built by Team PocketFlow — Abonga Magugu (ST10298002) & Percy Dube** for the App Development module.
 
 ---
 
@@ -187,6 +187,11 @@ falls back to the system sans-serif if offline.
 
 ---
 
-## 👤 Author
+## 👤 Authors
 
-Built by **Abonga Magugu** · ST10298002 · for the App Development module.
+Built as a team for the App Development module:
+
+| Name | Student number | GitHub |
+|---|---|---|
+| **Abonga Magugu** | ST10298002 | [@magugugit](https://github.com/magugugit) |
+| **Percy Dube** | ST10383359 | [@PSYCHOHITMAN](https://github.com/PSYCHOHITMAN) |
