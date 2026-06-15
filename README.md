@@ -12,7 +12,7 @@ green accent, and Inter typography for a clean, modern look.
 
 ## 📺 Demonstration Video
 
-🔗 **Watch the demo on YouTube:** https://youtu.be/uEE5Bs3ljx0
+🔗 **Watch the demo on YouTube:** https://youtu.be/vYnA10e2Alc
 
 The video runs on a **physical Android phone** and walks through **every feature** with a
 voice-over explaining what is being shown.
@@ -181,7 +181,7 @@ falls back to the system sans-serif if offline.
 - **Source code** → this GitHub repository (no zip)
 - **README** → this file
 - **Two own features** → documented above (Goals + Reports/Analytics)
-- **Demo video** → https://youtu.be/uEE5Bs3ljx0
+- **Demo video** → https://youtu.be/vYnA10e2Alc
 - **Built APK** → CI artifact (`pocketflow-debug-apk`) or `app/build/outputs/apk/debug/`
 - **Research & design documents** → as submitted in Part 1
 
