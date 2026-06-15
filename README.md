@@ -182,8 +182,8 @@ falls back to the system sans-serif if offline.
 - **README** → this file
 - **Two own features** → documented above (Goals + Reports/Analytics)
 - **Demo video** → https://youtu.be/vYnA10e2Alc
-- **Built APK** → CI artifact (`pocketflow-debug-apk`) or `app/build/outputs/apk/debug/`
-- **Research & design documents** → as submitted in Part 1
+- **Built APK** → attached to the [latest GitHub Release](https://github.com/magugugit/PocketFlow/releases) (also built by CI / `app/build/outputs/apk/debug/`)
+- **Research & design documents** → [`docs/`](docs/) folder (Part 1 submission)
 
 ---
 
