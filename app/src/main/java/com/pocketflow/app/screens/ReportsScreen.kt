@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,22 +20,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pocketflow.app.data.Analytics
 import com.pocketflow.app.data.AppState
 import com.pocketflow.app.data.SpendingCategory
 import com.pocketflow.app.data.TransactionType
 import com.pocketflow.app.ui.components.ToggleTab
 import com.pocketflow.app.ui.theme.*
+import java.time.YearMonth
+import kotlin.math.max
 import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(onBack: () -> Unit) {
-    var tabIndex by remember { mutableStateOf(1) }  // 0=Trends 1=Categories 2=Weekly
+    var tabIndex by remember { mutableStateOf(0) }  // 0=Spend vs Goals 1=Breakdown 2=Weekly
 
     Scaffold(
         topBar = {
@@ -98,12 +101,16 @@ fun ReportsScreen(onBack: () -> Unit) {
                 )
             }
 
+            // Visual display of how well the user is staying between their
+            // min/max spending goals over the past month (final POE requirement).
+            GoalBandGauge()
+
             // User-selectable period (assignment requirement)
             PeriodFilterRow()
 
             // Tab switcher
             ToggleTab(
-                options       = listOf("Trends", "Categories", "Weekly"),
+                options       = listOf("Spend vs Goals", "Breakdown", "Weekly"),
                 selectedIndex = tabIndex,
                 onSelect      = { tabIndex = it },
                 modifier      = Modifier.fillMaxWidth()
@@ -117,7 +124,7 @@ fun ReportsScreen(onBack: () -> Unit) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     when (tabIndex) {
-                        0 -> TrendsPlaceholder()
+                        0 -> CategoryGoalChart()
                         1 -> CategoriesTab()
                         2 -> WeeklyTab()
                     }
@@ -317,24 +324,254 @@ private fun WeeklyTab() {
     }
 }
 
-// ─── Trends placeholder ────────────────────────────────────────────────────────
+// ─── Spend-vs-Goals tab (bar chart with min/max goal lines) ────────────────────
+
+/**
+ * Bar chart of expense spend **per category** over the user-selectable period,
+ * with the user's **minimum and maximum monthly goals** drawn as horizontal
+ * reference lines across the plot (final POE requirement: "graph showing the
+ * amount spent per category over a user-selectable period ... must also display
+ * the minimum and maximum goals").
+ *
+ * Bars and goal lines share a single y-scale so the comparison is honest.
+ */
+@Composable
+private fun CategoryGoalChart() {
+    // Spend per category over the currently-selected range (sorted high → low).
+    val data = AppState.rangedTransactions
+        .filter { it.type == TransactionType.EXPENSE }
+        .groupBy { it.category }
+        .map { (cat, txs) ->
+            SpendingCategory(
+                label  = cat,
+                amount = txs.sumOf { it.amount },
+                color  = txs.first().categoryColor
+            )
+        }
+        .sortedByDescending { it.amount }
+
+    val minGoal = AppState.minMonthlySpend
+    val maxGoal = AppState.maxMonthlySpend
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            "Spending by Category vs Goals — ${AppState.selectedRange.label}",
+            fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary
+        )
+        Text(
+            "Min goal R %,.0f  ·  Max goal R %,.0f".format(minGoal, maxGoal),
+            fontSize = 12.sp, color = TextSecondary
+        )
+
+        if (data.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(180.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No expenses in this period.", fontSize = 13.sp, color = TextSecondary)
+            }
+            return@Column
+        }
+
+        // Shared scale: tall enough to show the biggest bar AND the max goal line.
+        val largestBar = data.maxOf { it.amount }
+        val scaleMax   = max(largestBar, maxGoal).coerceAtLeast(1.0)
+        val minFrac    = Analytics.fractionOfRange(minGoal, 0.0, scaleMax)
+        val maxFrac    = Analytics.fractionOfRange(maxGoal, 0.0, scaleMax)
+
+        // Plot area: bars (Compose layout) with the two goal lines overlaid (Canvas).
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+        ) {
+            Row(
+                modifier              = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment     = Alignment.Bottom
+            ) {
+                data.forEach { cat ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight((cat.amount / scaleMax).toFloat().coerceIn(0.02f, 1f))
+                            .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                            .background(cat.color)
+                    )
+                }
+            }
+            // Min (green) and Max (red) goal lines.
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val dashes = PathEffect.dashPathEffect(floatArrayOf(14f, 10f), 0f)
+                val yMin   = size.height * (1f - minFrac)
+                val yMax   = size.height * (1f - maxFrac)
+                drawLine(
+                    color = SafeGreen, start = Offset(0f, yMin), end = Offset(size.width, yMin),
+                    strokeWidth = 3f, pathEffect = dashes
+                )
+                drawLine(
+                    color = DangerRed, start = Offset(0f, yMax), end = Offset(size.width, yMax),
+                    strokeWidth = 3f, pathEffect = dashes
+                )
+            }
+        }
+
+        // Category axis labels (aligned 1:1 with the bars above).
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            data.forEach { cat ->
+                Text(
+                    cat.label.take(8),
+                    fontSize  = 9.sp,
+                    color     = TextSecondary,
+                    maxLines  = 1,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier  = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // Legend for the goal lines + per-category amounts.
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            GoalLineKey(color = SafeGreen, label = "Min goal")
+            GoalLineKey(color = DangerRed, label = "Max goal")
+        }
+        data.forEach { cat ->
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(cat.color)
+                    )
+                    Text(cat.label, fontSize = 13.sp, color = TextPrimary)
+                }
+                Text("R ${"%,.0f".format(cat.amount)}", fontSize = 13.sp,
+                    color = TextSecondary, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
 
 @Composable
-private fun TrendsPlaceholder() {
-    Column(
-        modifier            = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector        = Icons.Filled.TrendingUp,
-            contentDescription = null,
-            tint               = TextLight,
-            modifier           = Modifier.size(56.dp)
+private fun GoalLineKey(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(
+            modifier = Modifier
+                .width(18.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(color)
         )
-        Spacer(Modifier.height(8.dp))
-        Text("Trend charts coming soon", fontSize = 14.sp, color = TextSecondary)
+        Text(label, fontSize = 11.sp, color = TextSecondary)
+    }
+}
+
+// ─── Goal-band gauge (past-month adherence to min/max) ─────────────────────────
+
+/**
+ * Horizontal gauge that shows, in a single glance, how this calendar month's
+ * spending sits inside the user's minimum–maximum goal band:
+ *
+ *   0 ──[ UNDER | WITHIN | OVER ]── scaleMax
+ *
+ * A marker is placed at the current month's spend and the whole card is colour-
+ * coded green / amber / red via [Analytics.goalBand].
+ */
+@Composable
+private fun GoalBandGauge() {
+    val minGoal = AppState.minMonthlySpend
+    val maxGoal = AppState.maxMonthlySpend
+    val spend   = Analytics.monthSpend(AppState.transactions, YearMonth.now())
+
+    val band = Analytics.goalBand(spend, minGoal, maxGoal)
+    val statusColor = when (band) {
+        Analytics.GoalBand.UNDER  -> SafeGreen
+        Analytics.GoalBand.WITHIN -> WarningYellow
+        Analytics.GoalBand.OVER   -> DangerRed
+    }
+    val statusLabel = when (band) {
+        Analytics.GoalBand.UNDER  -> "Under your minimum — saving well"
+        Analytics.GoalBand.WITHIN -> "Within your goal band — on track"
+        Analytics.GoalBand.OVER   -> "Over your maximum — review spending"
+    }
+
+    // Scale the gauge so the max goal sits ~80% across, leaving headroom for overspend.
+    val scaleMax  = max(maxGoal * 1.25, spend * 1.1).coerceAtLeast(1.0)
+    val minFrac   = Analytics.fractionOfRange(minGoal, 0.0, scaleMax)
+    val maxFrac   = Analytics.fractionOfRange(maxGoal, 0.0, scaleMax)
+    val spendFrac = Analytics.fractionOfRange(spend, 0.0, scaleMax)
+
+    Card(
+        shape  = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Text("This Month vs Goal Band", fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp, color = TextPrimary)
+                Box(
+                    modifier = Modifier.size(12.dp).clip(CircleShape).background(statusColor)
+                )
+            }
+            Text(
+                "Spent R %,.0f of your R %,.0f–R %,.0f goal".format(spend, minGoal, maxGoal),
+                fontSize = 12.sp, color = TextSecondary
+            )
+
+            // The gauge track: grey base, amber "within" band, status-coloured spend
+            // fill, and tick markers at the min and max goals.
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(16.dp)
+            ) {
+                val h      = size.height
+                val w      = size.width
+                val radius = h / 2f
+
+                // Grey base track.
+                drawRoundRect(
+                    color = BorderLight,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius)
+                )
+                // "Within band" segment between the min and max goals.
+                drawRect(
+                    color   = WarningYellow.copy(alpha = 0.40f),
+                    topLeft = Offset(w * minFrac, 0f),
+                    size    = Size(w * (maxFrac - minFrac).coerceAtLeast(0f), h)
+                )
+                // Current-month spend fill, coloured by goal-band status.
+                drawRoundRect(
+                    color = statusColor.copy(alpha = 0.85f),
+                    size  = Size(w * spendFrac.coerceAtLeast(0.01f), h),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius)
+                )
+                // Min (green) and max (red) goal tick markers.
+                drawLine(
+                    color = SafeGreen, strokeWidth = 3f,
+                    start = Offset(w * minFrac, 0f), end = Offset(w * minFrac, h)
+                )
+                drawLine(
+                    color = DangerRed, strokeWidth = 3f,
+                    start = Offset(w * maxFrac, 0f), end = Offset(w * maxFrac, h)
+                )
+            }
+            Text(statusLabel, fontSize = 12.sp, color = statusColor, fontWeight = FontWeight.Medium)
+        }
     }
 }
